@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f4ed">
+  <meta name="description" content="逐层演示校园地图的 BFS 最短路径，编辑地图，并比较草坪地图上的最少步数与最低代价。">
+  <title>校园地图最短步数 · SoulCourse</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="./engine.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#lab">跳到演示</a>
+  <header class="masthead">
+    <div class="shell masthead-inner">
+      <a class="brand" href="#top" aria-label="SoulCourse，返回顶部">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>SoulCourse</span>
+      </a>
+      <div class="language-switch" id="language-switch" role="radiogroup" aria-label="程序语言">
+        <label><input type="radio" name="language" value="python" checked><span>Python</span></label>
+        <label><input type="radio" name="language" value="cpp"><span>C++</span></label>
+      </div>
+      <nav aria-label="页面导航">
+        <a href="#lab">逐层寻路</a>
+        <a href="#lessons">算法讲解</a>
+        <a href="#comparison">草坪对照</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell" id="top">
+    <section class="introduction" aria-labelledby="page-title">
+      <p class="course-label">健康科学编程导论<span aria-hidden="true"> · </span>第 15 题</p>
+      <h1 id="page-title">校园地图最短步数</h1>
+      <p class="intro-copy">从起点走到终点，最少需要几步？每次可以上下左右走一格，遇到墙就绕行。</p>
+    </section>
+
+    <section class="lab" id="lab" aria-labelledby="lab-title" tabindex="-1">
+      <header class="lab-header">
+        <h2 id="lab-title">逐层寻路 <span id="algorithm-name">BFS</span></h2>
+        <div class="lab-actions">
+          <button type="button" class="quiet-button" id="open-source" aria-expanded="false" aria-controls="source-drawer">查看代码</button>
+          <button type="button" class="quiet-button" id="edit" aria-pressed="false">编辑地图</button>
+          <button type="button" class="quiet-button" id="fullscreen" aria-pressed="false">
+            <span class="fullscreen-icon" aria-hidden="true"></span><span id="fullscreen-label">全屏演示</span>
+          </button>
+        </div>
+      </header>
+      <div class="lab-body">
+        <div class="map-side">
+          <div class="presets glass" role="group" aria-label="选择演示地图">
+            <button type="button" data-preset="detour" aria-pressed="true">双路绕墙</button>
+            <button type="button" data-preset="grass" aria-pressed="false">草坪绕行</button>
+            <button type="button" data-preset="official" aria-pressed="false">题面地图</button>
+            <button type="button" data-preset="adjacent" aria-pressed="false">起点相邻</button>
+            <button type="button" data-preset="blocked" aria-pressed="false">无法到达</button>
+          </div>
+          <div class="board-frame">
+            <div id="board" class="board" aria-label="当前地图"></div>
+          </div>
+          <div class="legend" aria-label="地图图例">
+            <span><b class="swatch swatch-start" aria-hidden="true">S</b> 起点</span>
+            <span><b class="swatch swatch-goal" aria-hidden="true">T</b> 终点</span>
+            <span><b class="swatch swatch-wall" aria-hidden="true"></b> 墙</span>
+            <span id="grass-legend" hidden><b class="swatch swatch-grass" aria-hidden="true">g</b> 草坪</span>
+            <span><b class="swatch swatch-reached" aria-hidden="true"></b> 已到达</span>
+            <span><b class="swatch swatch-path" aria-hidden="true"></b> 路线</span>
+          </div>
+          <noscript><p>启用 JavaScript 后可以逐层演示地图。</p></noscript>
+        </div>
+
+        <div class="control-side">
+          <div id="playback-panel">
+            <div class="readout">
+              <span id="metric-label">最少步数</span>
+              <span class="metric">
+                <strong class="metric-number"><span id="metric-value">9</span><span id="metric-reveal" aria-hidden="true" hidden></span></strong>
+                <span id="metric-unit">步</span>
+              </span>
+            </div>
+            <div class="playback-status" id="playback-status" role="status" aria-atomic="true">
+              <p id="status-title">先看路线</p>
+              <p id="status-detail">点「开始寻路」，看看程序怎样从 S 找到 T。</p>
+            </div>
+            <div class="playback glass" id="playback-controls" role="group" aria-label="播放控制">
+              <button type="button" id="previous" hidden>返回结果</button>
+              <button type="button" id="next" class="primary">开始寻路</button>
+              <button type="button" id="play" hidden>播放</button>
+              <button type="button" id="reset" hidden>看结果</button>
+            </div>
+          </div>
+          <div id="edit-panel" hidden>
+            <p class="editor-title">改一格，再试一次</p>
+            <p class="editor-copy" id="editor-help">选工具后点地图格子。用键盘时，方向键在棋盘内移动，按 Enter 或空格落格。</p>
+            <div class="editor-tools glass" role="group" aria-label="绘制工具">
+              <button type="button" data-tool="#" aria-pressed="true"><span class="swatch swatch-wall" aria-hidden="true"></span> 墙</button>
+              <button type="button" data-tool="." aria-pressed="false"><span class="swatch swatch-road" aria-hidden="true"></span> 道路</button>
+              <button type="button" data-tool="g" aria-pressed="false"><span class="swatch swatch-grass" aria-hidden="true">g</span> 草坪</button>
+              <button type="button" data-tool="S" aria-pressed="false"><span class="swatch swatch-start" aria-hidden="true">S</span> 起点</button>
+              <button type="button" data-tool="T" aria-pressed="false"><span class="swatch swatch-goal" aria-hidden="true">T</span> 终点</button>
+            </div>
+            <p id="edit-status" class="edit-status" role="status" aria-atomic="true"></p>
+            <button type="button" class="primary done-button" id="done-editing">完成编辑</button>
+          </div>
+        </div>
+
+        <aside id="source-drawer" class="source-drawer" aria-labelledby="source-title" hidden>
+          <div class="source-header">
+            <h3 id="source-title">Python 源码</h3>
+            <button type="button" class="quiet-button source-close" id="source-close" aria-label="关闭代码抽屉">关闭</button>
+          </div>
+          <div class="source-toolbar">
+            <div class="source-files glass" role="group" aria-label="切换程序和棋盘算法">
+              <button type="button" data-algorithm="bfs" aria-pressed="true">p15.py</button>
+              <button type="button" data-algorithm="dijkstra" aria-pressed="false">p15_grass.py</button>
+            </div>
+            <label class="source-follow"><input id="source-follow" type="checkbox" checked> 跟随讲解</label>
+          </div>
+          <p class="source-cue" id="source-cue"></p>
+          <div class="source-scroll" id="source-scroll" tabindex="0" role="region" aria-label="Python 源码，可滚动">
+            <pre><code id="source-code"></code></pre>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="lessons" class="lessons" aria-labelledby="lessons-title">
+      <header class="lesson-intro">
+        <h2 id="lessons-title">从一步一步找，到一条完整路线</h2>
+        <p>用同一张小地图练习 BFS：先设置地图，逐层找出最短路线，再试试终点被隔开的情况。最后给草坪加上代价，看看 Dijkstra 怎样找出花费最低的路线。</p>
+        <nav class="lesson-nav" aria-label="算法讲解章节">
+          <a href="#map-lesson"><span>1</span>设置地图</a>
+          <a href="#init-lesson"><span>2</span>初始化</a>
+          <a href="#queue-lesson"><span>3</span>检查邻格</a>
+          <a href="#layer-lesson"><span>4</span>逐层搜索</a>
+          <a href="#path-lesson"><span>5</span>回溯路线</a>
+          <a href="#blocked-lesson"><span>6</span>判断不可达</a>
+          <a href="#heap-lesson"><span>7</span>比较代价</a>
+          <a href="#cost-lesson"><span>8</span>输出结果</a>
+        </nav>
+      </header>
+      <article class="lesson" id="map-lesson" aria-labelledby="map-title">
+        <div class="lesson-summary">
+          <h3 id="map-title"><span class="lesson-step">第 1 步</span> 先把地图写成格子</h3>
+          <p>选一个起点 S、一个终点 T，再标出墙。程序只能上下左右移动，每走到一个相邻的可走格子算一步。</p>
+          <div class="board lesson-board" data-lesson-board></div>
+          <p class="lesson-progress" data-lesson-progress></p>
+        </div>
+        <div class="lesson-work">
+          <div class="lesson-flow">
+            <p class="lesson-list-label">地图输入 <span>按行记录符号</span></p>
+            <ol class="lesson-entries" data-lesson-entries role="list" aria-label="地图输入"></ol>
+            <p class="lesson-event" data-lesson-event role="status" aria-atomic="true"></p>
+          </div>
+          <div class="lesson-actions glass" role="group" aria-label="地图输入讲解控制">
+            <button type="button" data-lesson-prev>上一步</button>
+            <button type="button" data-lesson-next class="primary">下一步</button>
+            <button type="button" data-lesson-play>播放</button>
+            <button type="button" data-lesson-reset>重置</button>
+          </div>
+        </div>
+      </article>
+      <article class="lesson" id="init-lesson" aria-labelledby="init-title">
+        <div class="lesson-summary">
+          <h3 id="init-title"><span class="lesson-step">第 2 步</span> 把起点设为第 0 层</h3>
+          <p>站在 S 上还没移动，步数是 0。把 S 标为已发现，同时放入队列，接下来从它出发检查邻格。</p>
+          <div class="board lesson-board" data-lesson-board></div>
+          <p class="lesson-progress" data-lesson-progress></p>
+        </div>
+        <div class="lesson-work">
+          <div class="lesson-flow">
+            <p class="lesson-list-label">待处理队列 <span>每项记录坐标和步数</span></p>
+            <ol class="lesson-entries" data-lesson-entries role="list" aria-label="待处理队列"></ol>
+            <p class="lesson-event" data-lesson-event role="status" aria-atomic="true"></p>
+          </div>
+          <div class="lesson-actions glass" role="group" aria-label="待处理队列讲解控制">
+            <button type="button" data-lesson-prev>上一步</button>
+            <button type="button" data-lesson-next class="primary">下一步</button>
+            <button type="button" data-lesson-play>播放</button>
+            <button type="button" data-lesson-reset>重置</button>
+          </div>
+        </div>
+      </article>
+      <article class="lesson" id="queue-lesson" aria-labelledby="queue-title">
+        <div class="lesson-summary">
+          <h3 id="queue-title"><span class="lesson-step">第 3 步</span> 取出队首，检查邻格</h3>
+          <p>队列准备好后，从左侧取出队首，只检查上下左右能走的邻格。第一次发现的邻格排到右侧队尾，记下「当前步数 + 1」。</p>
+          <p>格子刚入队就标记，所以不会被另一个方向再次排进队列。你会看到所有 1 步的格子排在 2 步的格子前面。</p>
+          <div class="board lesson-board" data-lesson-board></div>
+          <p class="lesson-progress" data-lesson-progress></p>
+        </div>
+        <div class="lesson-work">
+          <div class="lesson-flow">
+            <p class="lesson-list-label">队列 <span>左边取出 · 右边加入</span></p>
+            <ol class="lesson-entries" data-lesson-entries role="list" aria-label="队列，队首在左"></ol>
+            <p class="lesson-event" data-lesson-event role="status" aria-atomic="true"></p>
+          </div>
+          <div class="lesson-actions glass" role="group" aria-label="队列讲解控制">
+            <button type="button" data-lesson-prev>上一步</button>
+            <button type="button" data-lesson-next class="primary">下一步</button>
+            <button type="button" data-lesson-play>播放</button>
+            <button type="button" data-lesson-reset>重置</button>
+          </div>
+        </div>
+      </article>
+      <article class="lesson" id="layer-lesson" aria-labelledby="layer-title">
+        <div class="lesson-summary">
+          <h3 id="layer-title"><span class="lesson-step">第 4 步</span> 一层一层向外找</h3>
+          <p>队列里先进入的是步数更少的格子。这次一次看整层：第 1 层是走一步能到的格子，第 2 层是两步第一次到的格子。</p>
+          <div class="board lesson-board" data-lesson-board></div>
+          <p class="lesson-progress" data-lesson-progress></p>
+        </div>
+        <div class="lesson-work">
+          <div class="lesson-flow">
+            <p class="lesson-list-label">当前层 <span>描边标出这一层的新格子</span></p>
+            <ol class="lesson-entries" data-lesson-entries role="list" aria-label="当前层"></ol>
+            <p class="lesson-event" data-lesson-event role="status" aria-atomic="true"></p>
+          </div>
+          <div class="lesson-actions glass" role="group" aria-label="当前层讲解控制">
+            <button type="button" data-lesson-prev>上一步</button>
+            <button type="button" data-lesson-next class="primary">下一层</button>
+            <button type="button" data-lesson-play>播放</button>
+            <button type="button" data-lesson-reset>重置</button>
+          </div>
+        </div>
+      </article>
+      <article class="lesson" id="path-lesson" aria-labelledby="path-title">
+        <div class="lesson-summary">
+          <h3 id="path-title"><span class="lesson-step">第 5 步</span> 从终点倒推最短路线</h3>
+          <p>上一步在第 3 层第一次到达 T，最少步数就是 3。网页在发现每一格时会记下它是从哪一格走来的，这个上一格叫「前驱」。</p>
+          <p>点「下一步」，从 T 顺着记录退回 S。把倒着收集的格子反过来，就是从起点出发的路线。</p>
+          <div class="board lesson-board" data-lesson-board></div>
+          <p class="lesson-progress" data-lesson-progress></p>
+        </div>
+        <div class="lesson-work">
+          <div class="lesson-flow">
+            <p class="lesson-list-label">已收集的格子 <span id="path-direction">从 T 往 S 回溯</span></p>
+            <ol class="lesson-entries" data-lesson-entries role="list" aria-label="已收集的路径格子"></ol>
+            <p class="lesson-event" data-lesson-event role="status" aria-atomic="true"></p>
+          </div>
+          <div class="lesson-actions glass" role="group" aria-label="从终点倒推最短路线讲解控制">
+            <button type="button" data-lesson-prev>上一步</button>
+            <button type="button" data-lesson-next class="primary">下一步</button>
+            <button type="button" data-lesson-play>播放</button>
+            <button type="button" data-lesson-reset>重置</button>
+          </div>
+        </div>
+      </article>
+      <article class="lesson" id="blocked-lesson" aria-labelledby="blocked-title">
+        <div class="lesson-summary">
+          <h3 id="blocked-title"><span class="lesson-step">第 6 步</span> 队列清空时判断不可达</h3>
+          <p>在刚才那张地图的下方中间加一堵墙，T 就被隔开了。碰到死胡同，队里可能还有其他格子要检查。所有能到的位置都处理完，队列才会清空。</p>
+          <p>点到最后一步，看看哪些格子被访问过，以及程序在哪里给出结果。</p>
+          <div class="board lesson-board" data-lesson-board></div>
+          <p class="lesson-progress" data-lesson-progress></p>
+        </div>
+        <div class="lesson-work">
+          <div class="lesson-flow">
+            <p class="lesson-list-label">队列 <span>处理完所有候选格才停止</span></p>
+            <ol class="lesson-entries" data-lesson-entries role="list" aria-label="队列，队首在左"></ol>
+            <p class="lesson-event" data-lesson-event role="status" aria-atomic="true"></p>
+          </div>
+          <div class="lesson-actions glass" role="group" aria-label="队列清空时判断不可达讲解控制">
+            <button type="button" data-lesson-prev>上一步</button>
+            <button type="button" data-lesson-next class="primary">下一步</button>
+            <button type="button" data-lesson-play>播放</button>
+            <button type="button" data-lesson-reset>重置</button>
+          </div>
+        </div>
+      </article>
+      <article class="lesson" id="heap-lesson" aria-labelledby="heap-title">
+        <div class="lesson-summary">
+          <h3 id="heap-title"><span class="lesson-step">第 7 步</span> 有了代价，先处理哪一格</h3>
+          <p>换一张有草坪的地图。进入草坪花费 3，进入道路或终点花费 1，所以走同样的步数也可能花费不同。</p>
+          <p>Dijkstra 给每个位置记录从 S 走来的累计代价。新路线更便宜时，更新这笔记录并放入最小堆。每次都先处理当前累计代价最低的位置。</p>
+          <div class="board lesson-board" data-lesson-board></div>
+          <p class="lesson-progress" data-lesson-progress></p>
+        </div>
+        <div class="lesson-work">
+          <div class="lesson-flow">
+            <p class="lesson-list-label">最小堆 <span>最上方是当前最小代价</span></p>
+            <ol class="lesson-entries heap-entries" data-lesson-entries role="list" aria-label="最小堆，第一个是堆顶"></ol>
+            <p class="lesson-event" data-lesson-event role="status" aria-atomic="true"></p>
+          </div>
+          <div class="lesson-actions glass" role="group" aria-label="最小堆讲解控制">
+            <button type="button" data-lesson-prev>上一步</button>
+            <button type="button" data-lesson-next class="primary">下一步</button>
+            <button type="button" data-lesson-play>播放</button>
+            <button type="button" data-lesson-reset>重置</button>
+          </div>
+          <div class="lesson-question" id="heap-question" hidden>
+            <p id="heap-prediction-label">这时执行 <code id="heap-prediction-code">heapq.heappop()</code>，哪个位置先出来？</p>
+            <div class="lesson-choices" role="group" aria-labelledby="heap-prediction-label">
+              <button class="quiet-button" type="button" data-predict="3">草坪 · 代价 3</button>
+              <button class="quiet-button" type="button" data-predict="1">道路 · 代价 1</button>
+            </div>
+            <p id="heap-answer" role="status" aria-atomic="true"></p>
+          </div>
+        </div>
+      </article>
+      <article class="lesson" id="cost-lesson" aria-labelledby="cost-title">
+        <div class="lesson-summary">
+          <h3 id="cost-title"><span class="lesson-step">第 8 步</span> 到达终点，返回最低代价</h3>
+          <p>沿用上一步的草坪地图。终点 T 从堆顶取出时，当前代价就是最低代价。把路线画出来，再核对每一步的花费。</p>
+          <div class="board lesson-board" data-lesson-board></div>
+          <p class="lesson-progress" data-lesson-progress></p>
+        </div>
+        <div class="lesson-work">
+          <div class="lesson-flow">
+            <p class="lesson-list-label">搜索结果 <span>代价与步数分别计算</span></p>
+            <ol class="lesson-entries" data-lesson-entries role="list" aria-label="搜索结果"></ol>
+            <p class="lesson-event" data-lesson-event role="status" aria-atomic="true"></p>
+          </div>
+          <div class="lesson-actions glass" role="group" aria-label="搜索结果讲解控制">
+            <button type="button" data-lesson-prev>上一步</button>
+            <button type="button" data-lesson-next class="primary">下一步</button>
+            <button type="button" data-lesson-play>播放</button>
+            <button type="button" data-lesson-reset>重置</button>
+          </div>
+        </div>
+      </article>
+      <div class="lesson-conclusion">
+        <p>找<strong>最少步数</strong>，用 BFS 的队列按层搜索。找<strong>最低总代价</strong>，用 Dijkstra 的最小堆比较累计代价。</p>
+        <a href="#comparison">换一张草坪地图试调代价 ↓</a>
+      </div>
+    </section>
+
+    <section id="comparison" class="comparison" aria-labelledby="comparison-title">
+      <header class="comparison-heading">
+        <div>
+          <p class="course-label">草坪拓展</p>
+          <h2 id="comparison-title">草坪花费怎样改变路线？</h2>
+          <p id="comparison-intro">上方要穿过三格草坪，下方全是道路。调一下草坪代价，看哪条更省。</p>
+        </div>
+        <button type="button" class="quiet-button" id="open-grass">跟着代码看 Dijkstra</button>
+      </header>
+      <div class="grass-control glass">
+        <label for="grass-price">进入草坪的代价</label>
+        <input type="range" id="grass-price" min="1" max="5" step="1" value="3">
+        <output for="grass-price" id="grass-value" aria-hidden="true">3</output>
+      </div>
+      <div class="comparison-actions">
+        <div class="price-choices" role="group" aria-label="比较关键草坪代价">
+          <button class="quiet-button" type="button" data-price="2" aria-pressed="false">代价 2</button>
+          <button class="quiet-button" type="button" data-price="3" aria-pressed="true">代价 3</button>
+        </div>
+        <div class="comparison-playback glass" role="group" aria-label="并排播放路线">
+          <button class="primary" type="button" id="compare-play">并排走一遍</button>
+          <button type="button" id="compare-next">同步走一步</button>
+        </div>
+      </div>
+      <p id="comparison-summary" class="comparison-summary" role="status" aria-atomic="true"></p>
+      <div class="comparison-grid">
+        <article class="comparison-item" aria-labelledby="bfs-title">
+          <h3 id="bfs-title">BFS <span>最少步数</span></h3>
+          <div id="bfs-board" class="board mini-board"></div>
+          <p id="bfs-result" class="comparison-result"></p>
+          <p id="bfs-math" class="comparison-math"></p>
+          <p>每一格都算一步，先找到走得最少的一条路线。</p>
+        </article>
+        <article class="comparison-item" aria-labelledby="dijkstra-title">
+          <h3 id="dijkstra-title">Dijkstra <span>最低代价</span></h3>
+          <div id="dijkstra-board" class="board mini-board"></div>
+          <p id="dijkstra-result" class="comparison-result"></p>
+          <p id="dijkstra-math" class="comparison-math"></p>
+          <p>每次先处理累计代价最低的格子，找到总花费最少的一条路线。</p>
+        </article>
+      </div>
+    </section>
+    <footer class="footer">
+      <span>健康科学编程导论 · 期中小组实训</span><a href="#top">返回顶部</a>
+    </footer>
+  </main>
+  <!-- Standalone programs for the classroom code drawer. -->
+  <template id="python-bfs"><pre># 第 15 题 校园地图最短步数
+
+
+from collections import deque
+import sys
+
+
+DIRECTIONS = ((0, 1), (1, 0), (0, -1), (-1, 0))
+
+
+def read_grid():
+    &quot;&quot;&quot;从标准输入读取一张地图，并检查题面规定的输入格式。&quot;&quot;&quot;
+    rows, cols = map(int, input().split())
+    if not (1 &lt;= rows &lt;= 100 and 1 &lt;= cols &lt;= 100):
+        raise ValueError
+
+    grid = [input() for _ in range(rows)]
+    if any(len(row) != cols or set(row) - set(&quot;.#ST&quot;) for row in grid):
+        raise ValueError
+    if any(sum(row.count(mark) for row in grid) != 1 for mark in &quot;ST&quot;):
+        raise ValueError
+    return grid
+
+
+def shortest_steps(grid):
+    &quot;&quot;&quot;用 BFS 计算最少步数，队列耗尽时返回 None。&quot;&quot;&quot;
+    rows, cols = len(grid), len(grid[0])
+    start_row, start_col = next(
+        (row_index, row.index(&quot;S&quot;)) for row_index, row in enumerate(grid) if &quot;S&quot; in row
+    )
+
+    visited = [[False] * cols for _ in range(rows)]
+    visited[start_row][start_col] = True
+    queue = deque([(start_row, start_col, 0)])
+
+    while queue:
+        row, col, steps = queue.popleft()
+        if grid[row][col] == &quot;T&quot;:
+            return steps
+
+        for dr, dc in DIRECTIONS:
+            nr, nc = row + dr, col + dc
+            if not (0 &lt;= nr &lt; rows and 0 &lt;= nc &lt; cols):
+                continue
+            if grid[nr][nc] == &quot;#&quot; or visited[nr][nc]:
+                continue
+
+            # 入队时标记，避免同一格被多个邻格重复加入。
+            visited[nr][nc] = True
+            queue.append((nr, nc, steps + 1))
+
+    return None
+
+
+def main():
+    try:
+        grid = read_grid()
+    except (EOFError, ValueError):
+        print(&quot;输入错误&quot;, file=sys.stderr)
+        return 1
+
+    steps = shortest_steps(grid)
+    if steps is None:
+        print(&quot;无法到达&quot;)
+    else:
+        print(f&quot;最短步数: {steps}&quot;)
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    sys.exit(main())</pre></template>
+  <template id="python-dijkstra"><pre># 第 15 题 草坪拓展
+# 示例输入：第一行 3 5，接着三行 SgggT、.###.、.....
+# 示例输出：最低代价: 8
+
+
+import heapq
+import sys
+
+
+DIRECTIONS = ((0, 1), (1, 0), (0, -1), (-1, 0))
+
+
+def read_grid():
+    &quot;&quot;&quot;读取扩展地图，其中 g 表示草坪。&quot;&quot;&quot;
+    rows, cols = map(int, input().split())
+    if not (1 &lt;= rows &lt;= 100 and 1 &lt;= cols &lt;= 100):
+        raise ValueError
+
+    grid = [input() for _ in range(rows)]
+    if any(len(row) != cols or set(row) - set(&quot;.#STg&quot;) for row in grid):
+        raise ValueError
+    if any(sum(row.count(mark) for row in grid) != 1 for mark in &quot;ST&quot;):
+        raise ValueError
+    return grid
+
+
+def lowest_cost(grid):
+    &quot;&quot;&quot;用 Dijkstra 算法计算最低代价，不可达时返回 None。&quot;&quot;&quot;
+    rows, cols = len(grid), len(grid[0])
+    start_row, start_col = next(
+        (row_index, row.index(&quot;S&quot;)) for row_index, row in enumerate(grid) if &quot;S&quot; in row
+    )
+
+    distance = [[float(&quot;inf&quot;)] * cols for _ in range(rows)]
+    distance[start_row][start_col] = 0
+    heap = [(0, start_row, start_col)]
+
+    while heap:
+        cost, row, col = heapq.heappop(heap)
+        if cost != distance[row][col]:
+            continue
+        if grid[row][col] == &quot;T&quot;:
+            return cost
+
+        for dr, dc in DIRECTIONS:
+            nr, nc = row + dr, col + dc
+            if not (0 &lt;= nr &lt; rows and 0 &lt;= nc &lt; cols):
+                continue
+            cell = grid[nr][nc]
+            if cell == &quot;#&quot;:
+                continue
+
+            new_cost = cost + (3 if cell == &quot;g&quot; else 1)
+            if new_cost &lt; distance[nr][nc]:
+                distance[nr][nc] = new_cost
+                heapq.heappush(heap, (new_cost, nr, nc))
+
+    return None
+
+
+def main():
+    try:
+        grid = read_grid()
+    except (EOFError, ValueError):
+        print(&quot;输入错误&quot;, file=sys.stderr)
+        return 1
+
+    cost = lowest_cost(grid)
+    if cost is None:
+        print(&quot;无法到达&quot;)
+    else:
+        print(f&quot;最低代价: {cost}&quot;)
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    sys.exit(main())</pre></template>
+  <template id="cpp-bfs"><pre>// 第 15 题 校园地图最短步数
+// 基于小组的《最短路径.cpp》，行列坐标从 1 开始。
+#include &lt;iostream&gt;
+#include &lt;queue&gt;
+#include &lt;string&gt;
+using namespace std;
+
+const int MAXN = 105;
+char cap[MAXN][MAXN];  // 地图：'S' 起点、'T' 终点、'.' 可走、'#' 墙
+bool vis[MAXN][MAXN];  // 入队时标记，避免同一格重复入队。
+// 按右、下、左、上的顺序检查邻格，与网页演示一致。
+const int dirx[4] = {0, 1, 0, -1};
+const int diry[4] = {1, 0, -1, 0};
+int n, m;
+int sx, sy, tx, ty;  // S起点的坐标 (sx,sy) 和 T 终点的坐标 (tx,ty)
+
+struct Node {
+    int x, y, step;  // 当前行号、当前列号、从 S 走到这里的步数
+};
+
+int bfs() {
+    queue&lt;Node&gt; q;
+    q.push({sx, sy, 0});
+    vis[sx][sy] = true;
+    while (!q.empty()) {
+        Node cur = q.front();
+        q.pop();
+
+        if (cur.x == tx &amp;&amp; cur.y == ty) return cur.step;
+
+        for (int k = 0; k &lt; 4; k++) {
+            int nx = cur.x + dirx[k];
+            int ny = cur.y + diry[k];
+            if (nx &lt; 1 || nx &gt; n || ny &lt; 1 || ny &gt; m) continue;
+            if (cap[nx][ny] == '#') continue;
+            if (vis[nx][ny]) continue;
+
+            vis[nx][ny] = true;
+            q.push({nx, ny, cur.step + 1});
+        }
+    }
+    return -1;
+}
+
+bool read_map() {
+    if (!(cin &gt;&gt; n &gt;&gt; m) || n &lt; 1 || n &gt; 100 || m &lt; 1 || m &gt; 100) {
+        return false;
+    }
+
+    string row;
+    getline(cin, row);  // 读完 n 和 m 所在的第一行。
+    if (row.find_first_not_of(" \t\r") != string::npos) return false;
+
+    int starts = 0, targets = 0;
+    for (int i = 1; i &lt;= n; i++) {
+        if (!getline(cin, row)) return false;
+        if (!row.empty() &amp;&amp; row.back() == '\r') row.pop_back();
+        if (static_cast&lt;int&gt;(row.size()) != m) return false;
+
+        for (int j = 1; j &lt;= m; j++) {
+            char cell = row[j - 1];
+            if (cell != '.' &amp;&amp; cell != '#' &amp;&amp; cell != 'S' &amp;&amp; cell != 'T') {
+                return false;
+            }
+            cap[i][j] = cell;
+            if (cell == 'S') {
+                sx = i;
+                sy = j;
+                starts++;
+            }
+            if (cell == 'T') {
+                tx = i;
+                ty = j;
+                targets++;
+            }
+        }
+    }
+    return starts == 1 &amp;&amp; targets == 1;
+}
+
+int main() {
+    if (!read_map()) {
+        cerr &lt;&lt; "输入错误\n";
+        return 1;
+    }
+    int ans = bfs();
+    if (ans == -1) cout &lt;&lt; "无法到达\n";
+    else cout &lt;&lt; "最短步数: " &lt;&lt; ans &lt;&lt; '\n';
+    return 0;
+}</pre></template>
+  <template id="cpp-dijkstra"><pre>// 第 15 题 草坪拓展
+// 沿用小组《最短路径.cpp》的地图和坐标，从 1 开始。
+// 进入草坪花费 3，进入道路或终点花费 1。
+#include &lt;functional&gt;
+#include &lt;iostream&gt;
+#include &lt;queue&gt;
+#include &lt;string&gt;
+#include &lt;tuple&gt;
+#include &lt;vector&gt;
+using namespace std;
+
+const int MAXN = 105;
+char cap[MAXN][MAXN];  // 地图：'S' 起点、'T' 终点、'.' 可走、'#' 墙
+const int INF = 1000000;
+int dist[MAXN][MAXN];  // 从起点到各格子目前找到的最低代价。
+// 按右、下、左、上的顺序检查邻格，与网页演示一致。
+const int dirx[4] = {0, 1, 0, -1};
+const int diry[4] = {1, 0, -1, 0};
+int n, m;
+int sx, sy, tx, ty;  // S起点的坐标 (sx,sy) 和 T 终点的坐标 (tx,ty)
+
+struct Node {
+    int x, y, cost;
+
+    bool operator&gt;(const Node&amp; other) const {
+        // 先比较代价，代价相等时按行、列排序。
+        return tie(cost, x, y) &gt; tie(other.cost, other.x, other.y);
+    }
+};
+
+int dijkstra() {
+    priority_queue&lt;Node, vector&lt;Node&gt;, greater&lt;Node&gt;&gt; pq;
+    pq.push({sx, sy, 0});
+    dist[sx][sy] = 0;
+
+    while (!pq.empty()) {
+        Node cur = pq.top();
+        pq.pop();
+        if (cur.cost != dist[cur.x][cur.y]) continue;
+        if (cur.x == tx &amp;&amp; cur.y == ty) return cur.cost;
+
+        for (int k = 0; k &lt; 4; k++) {
+            int nx = cur.x + dirx[k];
+            int ny = cur.y + diry[k];
+            if (nx &lt; 1 || nx &gt; n || ny &lt; 1 || ny &gt; m) continue;
+            if (cap[nx][ny] == '#') continue;
+
+            int new_cost = cur.cost + (cap[nx][ny] == 'g' ? 3 : 1);
+            if (new_cost &lt; dist[nx][ny]) {
+                dist[nx][ny] = new_cost;
+                pq.push({nx, ny, new_cost});
+            }
+        }
+    }
+    return -1;
+}
+
+bool read_map() {
+    if (!(cin &gt;&gt; n &gt;&gt; m) || n &lt; 1 || n &gt; 100 || m &lt; 1 || m &gt; 100) {
+        return false;
+    }
+
+    string row;
+    getline(cin, row);  // 读完 n 和 m 所在的第一行。
+    if (row.find_first_not_of(" \t\r") != string::npos) return false;
+
+    int starts = 0, targets = 0;
+    for (int i = 1; i &lt;= n; i++) {
+        if (!getline(cin, row)) return false;
+        if (!row.empty() &amp;&amp; row.back() == '\r') row.pop_back();
+        if (static_cast&lt;int&gt;(row.size()) != m) return false;
+
+        for (int j = 1; j &lt;= m; j++) {
+            char cell = row[j - 1];
+            if (cell != '.' &amp;&amp; cell != '#' &amp;&amp; cell != 'S' &amp;&amp; cell != 'T' &amp;&amp; cell != 'g') {
+                return false;
+            }
+            cap[i][j] = cell;
+            dist[i][j] = INF;
+            if (cell == 'S') {
+                sx = i;
+                sy = j;
+                starts++;
+            }
+            if (cell == 'T') {
+                tx = i;
+                ty = j;
+                targets++;
+            }
+        }
+    }
+    return starts == 1 &amp;&amp; targets == 1;
+}
+
+int main() {
+    if (!read_map()) {
+        cerr &lt;&lt; "输入错误\n";
+        return 1;
+    }
+    int ans = dijkstra();
+    if (ans == -1) cout &lt;&lt; "无法到达\n";
+    else cout &lt;&lt; "最低代价: " &lt;&lt; ans &lt;&lt; '\n';
+    return 0;
+}</pre></template>
+</body>
+</html>
